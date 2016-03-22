@@ -1,0 +1,6 @@
+{{template "base/basemobile.html" .}}
+{{define "head"}}
+{{if .IsWebSocket}}
+<script src="/static/js/websocket.js"></script>
+{{end}}
+{{end}}

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+{{template "base/headmobile.html" .}}
+</head>
+<body>
+
+
+<div data-role="page" data-theme="a">
+  <div data-role="header">
+    <h1>Avalon</h1>
+  </div>
+  <div data-role="main" class="ui-content">
+    <form method="post" action="/Join">
+      <label for="fname">username：</label>
+      <input type="text" name="fname" id="fname" required >
+      <input type="submit" data-inline="true" value="submit">
+    </form>
+  </div>
+</body>
+<footer>
+<div data-role="footer" class="author">
+      Author:{{.author}}
+      /
+      Contact me:
+      <a class="email" href="mailto:{{.Email}}">{{.Email}}</a>
+    </div>
+</div>
+</footer>
+</html>
