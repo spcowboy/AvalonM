@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/js/jquery.mobile-1.4.5.min.css">
+<script src="/static/js/jquery-1.10.1.min.js"></script>
+<script src="/static/js/jquery.mobile-1.4.5.min.js"></script>
+
+</head>
+<body>
+
+<div data-role="page">
+<script>
+//=======================================================================
+//define
+//console.log({{.UserName}});
+var socket;
+var Me={{.UserName}};
+//localStorage.Me={{.UserName}};
+localStorage.Leader="";
+localStorage.Currentstatus = 0;
+localStorage.Round = 0;
+localStorage.Role = -1;
+localStorage.numberofselect=0;
+var Users = [Me];
+var ctx1=$("#user1")[0].getContext("2d");
+var ctx2=$("#user2")[0].getContext("2d");
+var ctx3=$("#user3")[0].getContext("2d");
+var ctx4=$("#user4")[0].getContext("2d");
+var ctx5=$("#user5")[0].getContext("2d");
+var ctx6=$("#user6")[0].getContext("2d");
+var ctx7=$("#user7")[0].getContext("2d");
+var ctx8=$("#user8")[0].getContext("2d");
+var ctx9=$("#user9")[0].getContext("2d");
+var ctx0=$("#user0")[0].getContext("2d");
+
+
+
+
+$(document).ready(function () {
+   
+    $("#btn-vote").hide();
+    $("#btn-mission").hide();
+    $("#btn-missionerselect").hide();
+    $("#btn-assassinate").hide();
+    // Create a socket
+    socket = new WebSocket('ws://' + window.location.host+ '/ws/join?uname=' +{{.UserName}});
+        // Message received on the socket
+    socket.onmessage = function (event) {
+      var data = JSON.parse(event.data);
+      console.log(data);
+      switch (data.MType) {
+      case "chat_mtype": // chat
+          addMessage(data);
+          break;
+
+      case "notify_mtype": // notify
+          notifyMessage(data);
+          break;
+      case "control_mtype": // game control
+          gameControl(data);
+          break;
+      case "update_mtype": // update
+          updateGame(data);
+          break;
+      default:
+          break;
+    }
+};
+});
+function addMessage(data) {
+
+                //$("#msg-template .userpic").html("<img src='" + textMessage.UserInfo.Gravatar + "'>")
+                $("#msg-template .msg-time").html(data.TextMessage.Time);
+                if(data.UserStatus.Me.Name==Me){
+                    $("#msg-template .user").html("Me");
+                }else{
+                    $("#msg-template .user").html(data.UserStatus.Me.Name);
+                }
+                
+                $("#msg-template .seprate").html(":");
+                $("#msg-template .content").html(data.TextMessage.Content);
+                $("#chat-messages").prepend($("#msg-template").html());
+                //$('#chat-column')[0].scrollTop = $('#chat-column')[0].scrollHeight;
+}
+//control msg
+function addControlMsg(textMessage){
+    //$("#msg-template .userpic").html("<img src='" + textMessage.UserInfo.Gravatar + "'>")
+                //$("#msg-template .msg-time").html(TextMessage.Time);
+                $("#msg-template .user").html("System");
+                $("#msg-template .seprate").html(":");
+                $("#msg-template .content").html(textMessage);
+                $("#chat-messages").prepend($("#msg-template").html());
+                //$('#chat-column')[0].scrollTop = $('#chat-column')[0].scrollHeight;
+            
+}
+function notifyMessage(msg) {
+    $("#msg-template .user").html("System");
+    $("#msg-template .seprate").html(":");
+    $("#msg-template .content").html(msg);
+    $("#chat-messages").prepend($("#msg-template").html());
+    //$('#chat-column')[0].scrollTop = $('#chat-column')[0].scrollHeight;
+}
+
+function PreparePhase(UserStatus){
+    if(UserStatus.Me.Leader!=Me){
+        $("#btn-ready").parent("div").css("display","block");
+    }
+    addControlMsg("进入游戏准备阶段，请玩家确认准备完毕.");
+}
+
+function updateReadyState(UserStatus){
+    if(UserStatus.Me.Name!=Me){
+        //todo
+        //update user ready state
+        //canvas boarder :green
+
+        if (UserStatus.CurrentStatus==101){
+            for(x in Users){
+                if(UserStatus.Me.Name==Users[x]){
+                    
+                    $("#user"+x).css("border-color","red");
+                    
+                    break;
+                }
+            }
+            
+            addControlMsg(UserStatus.Me.Name+" is UnReady!");
+        }else{
+            for(x in Users){
+                if(UserStatus.Me.Name==Users[x]){
+                    
+                    $("#user"+x).css("border-color","green");
+                    
+                    break;
+                }
+            }
+            addControlMsg(UserStatus.Me.Name+" is Ready!");
+        }
+        
+    }else{
+        if (UserStatus.CurrentStatus==101){
+            for(x in Users){
+                if(UserStatus.Me.Name==Users[x]){
+                    
+                    $("#user"+x).css("border-color","red");
+                    
+                    break;
+                }
+            }
+            addControlMsg(UserStatus.Me.Name+" is UnReady!");
+            $("#btn-unready").parent("div").css("display","none");
+            $("#btn-ready").parent("div").css("display","block");
+        }else{
+            for(x in Users){
+                if(UserStatus.Me.Name==Users[x]){
+                    
+                    $("#user"+x).css("border-color","green");
+                    
+                    break;
+                }
+            }
+            addControlMsg(UserStatus.Me.Name+" is Ready!");
+            $("#btn-ready").parent("div").css("display","none");
+            $("#btn-unready").parent("div").css("display","block");
+            //console.log($("#btn-ready").val());
+        }
+    }
+    
+    
+}
+function showUserSlected(UserSelected){
+        
+        //todo
+        //update user select state
+        var name="队长已选出人物人选";
+        for(i in UserSelected){
+            name=name+","+UserSelected[i];
+        }
+
+        addControlMsg(name);
+    
+}
+function showVoteResult(UserStatus){
+    //change leader
+    for (x in Users){
+        if(Users[x]==localStorage.Leader){
+            $("#user"+x).css("border-width","2px");
+        }
+        if(Users[x]==UserStatus.Me.Leader){
+            $("#user"+x).css("border-width","5px");
+        }
+    }
+
+    
+    localStorage.Leader=UserStatus.Me.Leader;
+    //show vote result
+    for( x in UserStatus.VoteResultMap){
+        for(i in Users){
+            if(x==Users[i]){
+                if(UserStatus.VoteResultMap[x]){
+                    $("#user"+i).css("border-color","yellow");   //approve : yellow //black
+                }else{
+                    $("#user"+i).css("border-color","black");
+                }
+                
+            }
+        }
+        
+
+    }
+
+    if(UserStatus.VoteResult){
+        $("#VoteResult_Popup").html("赞成过半,投票通过！");
+        $("#VoteResult_Popup").click();
+        addControlMsg("赞成过半,投票通过！");
+    }else{
+        $("#VoteResult_Popup").html("赞成不过半,投票未通过！");
+        $("#VoteResult_Popup").click();
+        addControlMsg("赞成不过半,投票未通过！");
+    }
+   
+}
+function showMissionResult(UserStatus){
+    
+    //show mission result
+    //count down
+    var s=0,f=0;
+    for (x in UserStatus.MissionResultArray){
+        if (UserStatus.MissionResultArray[x]){
+            s++;
+        }else{
+            f++;
+        }
+    }
+    addControlMsg(s+" 票成功, "+f+" 票失败!")
+
+    if (UserStatus.MissionResult){
+        $("#MissionResult_Popup").html("任务成功!");
+        $("#MissionResult_Popup").click();
+        addControlMsg("任务成功!");
+    }else{
+        $("#MissionResult_Popup").html("任务失败!");
+        $("#MissionResult_Popup").click();
+        addControlMsg("任务失败!");
+    }
+    gameCountDown(UserStatus.CountDown);
+}
+function showGameResult(data){
+    
+    //show game result
+    //go to prepare phase
+    addControlMsg(data.TextMessage.Content);
+    showRoles(data.UserStatus.ShowRole);
+
+}
+function getRole(introle){
+    switch(introle){
+        case 1:
+            role="梅林"
+            break;
+        case 2:
+        role="派西维尔"
+            break;
+        case 3:
+        role="亚瑟的忠臣"
+            break;
+        case 4:
+        role="莫德雷德"
+            break;
+        case 5:
+        role="莫甘娜"
+            break;
+        case 6:
+        role="奥伯伦"
+            break;
+        case 7:
+        role="刺客"
+            break;
+        case 8:
+        role="莫德雷德的爪牙"
+            break;
+        case 9:
+        role="未知"
+            break;
+        default:
+            break;
+    }
+    return role;
+}
+function leaderCanStart(UserStatus){
+    
+    //tell leader can start game
+    if(UserStatus.Me.Name==Me){
+        //$("#btn-start").parent("div").css("display","none");
+        $("#btn-start").parent("div").css("display","block");
+    }
+    addControlMsg("All users ready,"+UserStatus.Me.Name+" 请点击 start.");
+}
+//* 5人：2-3-2-3-3（均为出现一个任务失败就判定为任务失败）
+//* 6人：2-3-4-3-4（均为出现一个任务失败就判定为任务失败）
+//* 7人：2-3-3-4-4（第一个4人任务需要出现两个任务失败才判定为失败，其余只需要一个）
+//* 8-10人：3-4-4-5-5（第一个5人任务需要出现两个任务失败才判定为失败，其余只需要一个）
+function initMissionerSelect(){
+    var number = Users.length;
+    number = getMiissionerNumber();
+    localStorage.numberofselect=number;
+    $("#field-selectmissioner").empty();
+    $("#field-selectmissioner").append("<label for='missioner'>您可以选择"+number+"名人选做任务:</label>");
+    if(getBrowserInfo()=="safari"){
+        $("#field-selectmissioner").append("<select name='missioner' id='missioner' multiple='multiple' data-native-menu='false'>");
+        for (x in Users){
+            
+            $("#missioner").append("<option value='"+Users[x]+"'>"+Users[x]+"</option>");
+        }
+        //$("#field-selectmissioner").append("</select>");
+        
+    }else{
+        for (x in Users){
+            $("#field-selectmissioner").append("<label><input class='missioner' name='missioner' type='checkbox' value='"+Users[x]+"' />"+Users[x]+"</label>");
+        }
+         
+    }
+    
+}
+
+//init assassinate
+function initAssassinate(){
+    $("#field-assassinate-select").empty();
+    $("#field-assassinate-select").append("<label for='assassinater'>请选择一名暗杀对象:</label>");
+    $("#field-assassinate-select").append("<select name='assassinater' id='assassinater' multiple='multiple' data-native-menu='false'>");
+    for (x in Users){
+        
+        $("#assassinater").append("<option value='"+Users[x]+"'>"+Users[x]+"</option>");
+    }
+    $("#field-assassinate-select").append("</select>");
+}
+function getMiissionerNumber(){
+    var ret=0;
+    switch(Users.length){
+        case 5:
+            switch(parseInt(localStorage.Round)){
+                case 1:
+                    ret = 2;
+                    break;
+                case 2:
+                ret = 3;
+                    break;
+                case 3:
+                ret = 2;
+                    break;
+                case 4:
+                ret = 3;
+                    break;
+                case 5:
+                ret = 3;
+                    break;
+                default:
+                    break;
+            }
+        case 6:
+            switch(parseInt(localStorage.Round)){
+                case 1:
+                    ret = 2;
+                    break;
+                case 2:
+                ret = 3;
+                    break;
+                case 3:
+                ret = 4;
+                    break;
+                case 4:
+                ret = 3;
+                    break;
+                case 5:
+                ret = 4;
+                    break;
+                default:
+                    break;
+            }
+        case 7:
+            switch(parseInt(localStorage.Round)){
+                case 1:
+                    ret = 2;
+                    break;
+                case 2:
+                ret = 3;
+                    break;
+                case 3:
+                ret = 3;
+                    break;
+                case 4:
+                ret = 4;
+                    break;
+                case 5:
+                ret = 4;
+                    break;
+                default:
+                    break;
+            }
+        default:    //8-10
+            switch(parseInt(localStorage.Round)){
+                case 1:
+                    ret = 3;
+                    break;
+                case 2:
+                ret = 4;
+                    break;
+                case 3:
+                ret = 4;
+                    break;
+                case 4:
+                ret = 5;
+                    break;
+                case 5:
+                ret = 5;
+                    break;
+                default:
+                    break;
+            }
+    }
+    return ret;
+}
+function notifyPhaseChange(UserStatus){
+    
+    //notifyPhaseChange
+    switch(UserStatus.CurrentStatus){
+        case 104:
+            addControlMsg("leader started the game.");
+            //hide ready/ start button
+            $("#btn-ready").parent("div").css("display","none");
+            $("#btn-unready").parent("div").css("display","none");
+            $("#btn-start").parent("div").css("display","none");
+            break;
+        case 1041:
+            addControlMsg("game restart.");
+            //hide ready/ start button
+            $("#btn-ready").parent("div").css("display","none");
+            $("#btn-unready").parent("div").css("display","none");
+            $("#btn-start").parent("div").css("display","none");
+            break;
+        case 105:
+            //根据人数初始化人物人选选择界面
+            addControlMsg("天黑了，请梅林确认坏人，派西维尔确认梅林和莫甘娜，坏人相互确认！");
+
+            break;
+        case 110:
+            addControlMsg("天亮了，开始第一回合！");
+            localStorage.Round=1;
+            initMissionerSelect();
+            initAssassinate();
+            break; 
+        case 111:
+        addControlMsg("第二回合开始！");
+        localStorage.Round=2;
+        initMissionerSelect();
+        break;
+        case 112:
+        addControlMsg("第三回合开始！");
+        localStorage.Round=3;
+        initMissionerSelect();
+        break;
+        case 113:
+        addControlMsg("第四回合开始！");
+        localStorage.Round=4;
+        initMissionerSelect();
+        break;
+        case 114:
+        addControlMsg("第五回合开始！");
+        localStorage.Round=5;
+        initMissionerSelect();
+        break;
+        case 122:
+        addControlMsg("推迟已经达到4次直接开始任务！");
+        break;
+        default:
+            break;
+    }
+}
+function showRoles(ShowRole){
+    
+    //showRoles
+    var role;
+    //show role
+    for (x in ShowRole){
+        for(var y=0;y!=Users.length;y++){
+            if(x==Users[y]){
+                switch(y){
+                    case 0:
+                        ctx0.fillText(getRole(ShowRole[x]),0,70);
+                        break;
+                    case 1:
+                    ctx1.fillText(getRole(ShowRole[x]),0,70);
+                        break;
+                    case 2:
+                    ctx2.fillText(getRole(ShowRole[x]),0,70);
+                        break;
+                    case 3:
+                    ctx3.fillText(getRole(ShowRole[x]),0,70);
+                        break;
+                    case 4:
+                    ctx4.fillText(getRole(ShowRole[x]),0,70);
+                        break;
+                    case 5:
+                    ctx5.fillText(getRole(ShowRole[x]),0,70);
+                        break;
+                    case 6:
+                    ctx6.fillText(getRole(ShowRole[x]),0,70);
+                        break;
+                    case 7:
+                    ctx7.fillText(getRole(ShowRole[x]),0,70);
+                        break;
+                    case 8:
+                    ctx8.fillText(getRole(ShowRole[x]),0,70);
+                        break;
+                    case 9:
+                    ctx9.fillText(getRole(ShowRole[x]),0,70);
+                        break;
+                    default:
+                    break;
+                }
+            }
+        }
+        
+    }
+}
+    
+
+function popupMessage(msg){
+    $("#Popup-message").empty();
+    $("#Popup-message").append("<a href='#' data-rel='back' class='ui-btn ui-corner-all ui-shadow ui-btn ui-icon-delete ui-btn-icon-notext ui-btn-right'>关闭</a>");
+    $("#Popup-message").append("<p><b>"+msg+"</b></p>");
+    $("#btn-ppupmessage").click();
+}
+function countDown(UserStatus){
+    
+    //countDown
+     gameCountDown(UserStatus.CountDown);
+}
+function assassinate(UserStatus){
+    
+    //assassinate
+    addControlMsg("刺客开始刺杀!");
+    if (UserStatus.Me.Name==Me){
+        $("#btn-assassinate").click();
+        $("#btn-assassinate").show();
+    }
+}
+function leaderstartSelect(UserStatus){
+    
+    //leaderstartSelect
+    addControlMsg("队长开始选人!");
+    if(UserStatus.Me.Name==Me){
+        $("#btn-missionerselect").click();
+        $("#btn-missionerselect").show();
+    }
+}
+function starttoSpeech(UserStatus){
+    
+    //starttoSpeech
+    
+    addControlMsg("请 "+UserStatus.Me.Name+" 发言!");
+    gameCountDown(UserStatus.CountDown);
+    //countdown
+
+}
+function startToVote(UserStatus){
+    
+    //startToVote
+    addControlMsg("开始对任务的人选进行投票!");
+    $("#btn-vote").css('display','block');
+    document.getElementById("submit-Popup_vote-approve").disabled=false;
+    document.getElementById("submit-Popup_vote-oppose").disabled=false;
+
+}
+
+function startToMission(UserStatus){
+    addControlMsg("开始做任务!");
+    //startToMission
+    for(x in UserStatus.UserSelected){
+        if(Me==UserStatus.UserSelected[x]){
+            $("#btn-mission").css('display','block');
+            document.getElementById("submit-Popup_mission-succ").disabled=false;
+            document.getElementById("submit-Popup_mission-fail").disabled=false;
+        }
+    }
+    
+    
+    
+    
+}
+function AssignRoleRoles(UserStatus){
+    var role = getRole(UserStatus.Me.Role);
+    for(var y=0;y!=Users.length;y++){
+            if(UserStatus.Me.Name==Users[y]){
+                switch(y){
+                    case 0:
+                        ctx0.fillText(role,0,70);
+                        break;
+                    case 1:
+                    ctx1.fillText(role,0,70);
+                        break;
+                    case 2:
+                    ctx2.fillText(role,0,70);
+                        break;
+                    case 3:
+                    ctx3.fillText(role,0,70);
+                        break;
+                    case 4:
+                    ctx4.fillText(role,0,70);
+                        break;
+                    case 5:
+                    ctx5.fillText(role,0,70);
+                        break;
+                    case 6:
+                    ctx6.fillText(role,0,70);
+                        break;
+                    case 7:
+                    ctx7.fillText(role,0,70);
+                        break;
+                    case 8:
+                    ctx8.fillText(role,0,70);
+                        break;
+                    case 9:
+                    ctx9.fillText(role,0,70);
+                        break;
+                    default:
+                    break;
+                }
+            }
+        }
+}
+function gameControl(data) {
+    switch (data.UserStatus.CurrentStatus){
+        //C_PreparePhase，进入准备阶段，可以选择ready,unready
+        case 0:
+            PreparePhase(data.UserStatus);
+            break;
+            //C_UnReady
+        case 101:
+            updateReadyState(data.UserStatus);
+            break;
+        //C_Ready,更新用户准备状态
+        case 102:
+            updateReadyState(data.UserStatus);
+            break;
+            //C_LeaderStart
+            //C_AssignRole
+        case 21:
+            AssignRoleRoles(data.UserStatus);
+            break;
+        case 104:
+            notifyPhaseChange(data.UserStatus);
+            break;
+        case 1041:
+            notifyPhaseChange(data.UserStatus);
+            break;
+        //C_LeaderFinSelect,//leader选人完毕
+        case 116:
+            showUserSlected(data.UserStatus.UserSelected);
+            break;
+        //C_VoteSuccAndStartMission
+        case 121:
+            showVoteResult(data.UserStatus);
+            break;
+        //C_VoteFailAndReSelect
+        case 120:
+            showVoteResult(data.UserStatus);
+            break;
+        //C_MissionEnd
+        case 124:
+            showMissionResult(data.UserStatus);
+            break;
+        //C_ShowGameResult
+        case 9:
+            showGameResult(data);
+            break;
+        //C_LeaderCanStart
+        case 103:
+            leaderCanStart(data.UserStatus);
+            break;
+        //C_GoIntoLightOffPhase
+        case 105:
+            notifyPhaseChange(data.UserStatus);
+            break;
+        //C_RolesToMerlin
+        case 106:
+            showRoles(data.UserStatus.ShowRole);
+            break;
+        //C_RolesToPercival
+        case 108:
+            showRoles(data.UserStatus.ShowRole);
+            break;
+        //C_RolesBadToBad
+        case 107:
+            showRoles(data.UserStatus.ShowRole);
+            break;
+        //C_CountDown
+        case 109:
+            countDown(data.UserStatus);
+            break;
+        //C_LightOnandR1start
+        case 110:
+            notifyPhaseChange(data.UserStatus);
+            break;
+        //C_R2start
+        case 111:
+        notifyPhaseChange(data.UserStatus);
+            break;
+        //C_R3start
+        case 112:
+        notifyPhaseChange(data.UserStatus);
+            break;
+        //C_R4start
+        case 113:
+        notifyPhaseChange(data.UserStatus);
+            break;
+        //C_R5start
+        case 114:
+        notifyPhaseChange(data.UserStatus);
+            break;
+        //C_DelayOver4TimesAndNoSpeech
+        case 122:
+        notifyPhaseChange(data.UserStatus);
+            break;
+        //C_Assassinate
+        case 125:
+            assassinate(data.UserStatus);
+            break;
+        //C_LeaderstartSelect
+        case 115:
+            leaderstartSelect(data.UserStatus);
+            break;
+        //C_StarttoSpeech
+        case 117:
+            starttoSpeech(data.UserStatus);
+            break;
+        //C_StartToVote
+        case 118:
+            startToVote(data.UserStatus);
+            break;
+        //C_StartToMission
+        case 123:
+            startToMission(data.UserStatus);
+            break;
+        default:
+            break;
+        //
+    }
+}
+//用户加入房间消息
+function updateGame(data) {
+    if(typeof(Storage)!=="undefined")
+      {
+      // Yes! localStorage and sessionStorage support!
+      // Some code.....
+      }
+    else
+      {
+      // Sorry! No web storage support..
+      }
+      //如果当前玩家是leader并且已经显示了start按钮，则隐藏start
+      if(data.UserStatus.Me.Leader==Me && $("#btn-start").parent("div").css("display")=="block"){
+        $("#btn-start").parent("div").css("display","none");
+      }
+      notifyMessage(data.TextMessage.Content);
+      if (data.UserStatus.Me.Name!=Me){
+            initUsers(data.UserStatus.Users);
+            if (data.UserStatus.Me.Leader==Me){
+                $("#btn-start").parent("div").css("display","none");
+                $("#btn-unready").parent("div").css("display","none");
+                $("#btn-ready").parent("div").css("display","none");
+
+            }else{
+                 $("#btn-start").parent("div").css("display","none");
+                //$("#btn-unready").parent("div").css("display","none");
+            }
+            freshLeader(data.UserStatus.Me.Leader);
+            freshUser(data.UserStatus.ReadyStatus);//fresh user list
+            //print xxx join room
+            //todo
+      }else{
+            //me is leader
+            initUsers(data.UserStatus.Users);
+            freshLeader(data.UserStatus.Me.Leader);
+            //localStorage.Leader = data.UserStatus.Me.Leader;
+            //notifyMessage("Me join this room.");
+            //$("#btn-ready").parent("div").css("display","none");
+
+            if (data.UserStatus.Me.Leader==Me){
+                $("#btn-start").parent("div").css("display","none");
+                $("#btn-unready").parent("div").css("display","none");
+                $("#btn-ready").parent("div").css("display","none");
+            }else{
+                $("#btn-start").parent("div").css("display","none");
+                //console.log(123456);
+                $("#btn-unready").parent("div").css("display","none");
+            }
+            
+            freshUser(data.UserStatus.ReadyStatus);
+      }
+      //更新用户列表
+
+      //todo
+}
+function freshLeader(Leader){
+    //console.log(Leader);
+    //console.log(localStorage.Leader);
+    //console.log(Users);
+    if(localStorage.Leader!=Leader){
+        //console.log(3333334444444);
+        for (x in Users){
+        if(Users[x]==localStorage.Leader){
+            //console.log(333333555555);
+            $("#user"+x).css("border-width","2px");
+        }
+        if(Users[x]==Leader){
+            //console.log(33333366666);
+            $("#user"+x).css("border-width","5px");
+        }
+        }
+        localStorage.Leader=Leader;
+    }else{
+        //console.log(22222333333);
+        for (x in Users){
+            if(Users[x]==Leader){
+                //console.log(333333);
+                $("#user"+x).css("border-width","5px");
+            }
+        
+        }
+        
+    }
+    
+    
+}
+function clearRole(){
+    var img_user=document.getElementById("icon-user");
+    for(var i =0;i!=Users.length;i++){
+        switch(i){
+            case 0:
+                ctx0.clearRect(0,0,50,75);
+                ctx0.drawImage(img_user,1,1,50,50);
+                
+                ctx0.fillText(Users[i],0,60);
+                break;
+            case 1:
+                ctx1.clearRect(0,0,50,75);
+                ctx1.drawImage(img_user,1,1,50,50);
+                
+                ctx1.fillText(Users[i],0,60);
+                break;
+            case 2:
+                ctx2.clearRect(0,0,50,75);
+                ctx2.drawImage(img_user,1,1,50,50);
+                
+                ctx2.fillText(Users[i],0,60);
+                break;
+            case 3:
+                ctx3.clearRect(0,0,50,75);
+                ctx3.drawImage(img_user,1,1,50,50);
+                
+                ctx3.fillText(Users[i],0,60);
+                break;
+            case 4:
+                ctx4.clearRect(0,0,50,75);
+                ctx4.drawImage(img_user,1,1,50,50);
+                
+                ctx4.fillText(Users[i],0,60);
+                break;
+            case 5:
+                ctx5.clearRect(0,0,50,75);
+                ctx5.drawImage(img_user,1,1,50,50);
+                
+                ctx5.fillText(Users[i],0,60);
+                break;
+            case 6:
+                ctx6.clearRect(0,0,50,75);
+                ctx6.drawImage(img_user,1,1,50,50);
+                
+                ctx6.fillText(Users[i],0,60);
+                break;
+            case 7:
+                ctx7.clearRect(0,0,50,75);
+                ctx7.drawImage(img_user,1,1,50,50);
+                
+                ctx7.fillText(Users[i],0,60);
+                break;
+            case 8:
+                ctx8.clearRect(0,0,50,75);
+                ctx8.drawImage(img_user,1,1,50,50);
+                
+                ctx8.fillText(Users[i],0,60);
+                break;
+            case 9:
+                ctx9.clearRect(0,0,50,75);
+                ctx9.drawImage(img_user,1,1,50,50);
+                
+                ctx9.fillText(Users[i],0,60);
+                break;
+    }}
+}
+function freshUser(ReadyStatus){
+    
+    var img_user=document.getElementById("icon-user");
+    for(var i=0;i!=10;i++){
+        $("#user"+i).hide();
+    }
+    for (var x=0;x!=Users.length;x++){
+        $("#user"+x).show();
+        //console.log(Users[x]);
+        //console.log(ReadyStatus);
+        if(ReadyStatus[Users[x]]){
+            $("#user"+x).css("border-color","green");
+        }else{
+            $("#user"+x).css("border-color","red");
+        }
+        switch(x){
+            case 0:
+                ctx0.clearRect(0,0,50,75);
+                ctx0.drawImage(img_user,1,1,50,50);
+                
+                ctx0.fillText(Users[x],0,60);
+                break;
+            case 1:
+                ctx1.clearRect(0,0,50,75);
+                ctx1.drawImage(img_user,1,1,50,50);
+                
+                ctx1.fillText(Users[x],0,60);
+                break;
+            case 2:
+                ctx2.clearRect(0,0,50,75);
+                ctx2.drawImage(img_user,1,1,50,50);
+                
+                ctx2.fillText(Users[x],0,60);
+                break;
+            case 3:
+                ctx3.clearRect(0,0,50,75);
+                ctx3.drawImage(img_user,1,1,50,50);
+                
+                ctx3.fillText(Users[x],0,60);
+                break;
+            case 4:
+                ctx4.clearRect(0,0,50,75);
+                ctx4.drawImage(img_user,1,1,50,50);
+                
+                ctx4.fillText(Users[x],0,60);
+                break;
+            case 5:
+                ctx5.clearRect(0,0,50,75);
+                ctx5.drawImage(img_user,1,1,50,50);
+                
+                ctx5.fillText(Users[x],0,60);
+                break;
+            case 6:
+                ctx6.clearRect(0,0,50,75);
+                ctx6.drawImage(img_user,1,1,50,50);
+                
+                ctx6.fillText(Users[x],0,60);
+                break;
+            case 7:
+                ctx7.clearRect(0,0,50,75);
+                ctx7.drawImage(img_user,1,1,50,50);
+                
+                ctx7.fillText(Users[x],0,60);
+                break;
+            case 8:
+                ctx8.clearRect(0,0,50,75);
+                ctx8.drawImage(img_user,1,1,50,50);
+                
+                ctx8.fillText(Users[x],0,60);
+                break;
+            case 9:
+                ctx9.clearRect(0,0,50,75);
+                ctx9.drawImage(img_user,1,1,50,50);
+                
+                ctx9.fillText(Users[x],0,60);
+                break;
+        }
+        //$("#user-name"+x).html(Users[x]);
+        
+    }
+}
+function addUser(name){
+    Users.push(name);
+}
+function initUsers(User){
+    Users=User;
+    
+}
+//click start
+$("#btn-start").click(function(){
+    msg = {MType:"control_mtype",UserStatus:{Me:{Name:Me},CurrentStatus:104}};
+    sendJson(msg);
+});
+
+
+
+    //Send Json
+    var sendJson = function(data){
+        console.log(data);
+        socket.send(JSON.stringify(data));
+        $('#sendbox').val("");
+    }
+
+    // Send messages.
+    var postConecnt = function () {
+        var uname = $('#uname').text();
+        var content = $('#sendbox').val();
+        socket.send(content);
+        $('#sendbox').val("");
+    }
+
+    $('#chat-post').click(function () {
+        msg = {MType:"chat_mtype",TextMessage:{Content:$("#text_input").val()},UserStatus:{Me:{Name:Me}}};
+        sendJson(msg);
+        $("#text_input").val("");
+    });
+
+    $('#submit-assassinate').click(function (){
+        msg = {MType:"control_mtype",UserStatus:{Me:{Name:Me},CurrentStatus:126,AssassinateResult:$("#assassinater").val()[0]}};
+        sendJson(msg);
+        $("#btn-assassinate").hide();
+        return false;
+    });
+
+    $('#submit-missioner').click(function () {
+        if(getBrowserInfo=="safari"){
+            if($("#missioner").val().length!= parseInt(localStorage.numberofselect)){
+                popupMessage("选择人数错误，请重新选择！");
+                return false;
+            //$("#reset-missiner").click();
+            }else{
+                msg = {MType:"control_mtype",UserStatus:{Me:{Name:Me},CurrentStatus:116,UserSelected:$("#missioner").val()}};
+                sendJson(msg);
+                $("#btn-missionerselect").hide();
+                return false;
+            }   
+        }else{
+            var selectnumber=0;
+            var missioner = $(".missioner");
+            var missioners = [];
+            for(var i=0;i!=missioner.length;i++){
+                if(missioner[i].checked){
+                    selectnumber++;
+                    missioners.push(missioner[i].value);
+                }
+            }
+            if(selectnumber!= parseInt(localStorage.numberofselect)){
+                popupMessage("选择人数错误，请重新选择！");
+                return false;
+                //$("#reset-missiner").click();
+            }else{
+                msg = {MType:"control_mtype",UserStatus:{Me:{Name:Me},CurrentStatus:116,UserSelected:missioners}};
+                sendJson(msg);
+                $("#btn-missionerselect").hide();
+                
+                return false;
+            }  
+        }
+        
+    });
+
+    $('#btn-ready').click(function(){
+        
+            msg = {MType:"control_mtype",UserStatus:{Me:{Name:Me},CurrentStatus:102}};
+            sendJson(msg);
+            
+        
+        
+    });
+    $('#btn-unready').click(function(){
+        
+            msg = {MType:"control_mtype",UserStatus:{Me:{Name:Me},CurrentStatus:101}};
+            sendJson(msg);
+            
+        
+        
+    });
+    $('#submit-Popup_vote-approve').click(function(){
+        
+            msg = {MType:"control_mtype",UserStatus:{Me:{Name:Me},CurrentStatus:119,VoteResult:true}};
+            sendJson(msg);
+        $("#btn-vote").hide();    
+        document.getElementById("submit-Popup_vote-approve").disabled=true;
+        document.getElementById("submit-Popup_vote-oppose").disabled=true;
+        
+    });
+    $('#submit-Popup_vote-oppose').click(function(){
+        
+            msg = {MType:"control_mtype",UserStatus:{Me:{Name:Me},CurrentStatus:119,VoteResult:false}};
+            sendJson(msg);
+            $("#btn-vote").hide();
+            document.getElementById("submit-Popup_vote-approve").disabled=true;
+            document.getElementById("submit-Popup_vote-oppose").disabled=true;
+        
+        
+    });
+    
+    $('#submit-Popup_mission-succ').click(function(){
+        
+            msg = {MType:"control_mtype",UserStatus:{Me:{Name:Me},CurrentStatus:87,MissionResult:true}};
+            sendJson(msg);
+            $("#btn-mission").hide();
+            document.getElementById("submit-Popup_mission-succ").disabled=true;
+            document.getElementById("submit-Popup_mission-fail").disabled=true;  
+        
+        
+    });
+    $('#submit-Popup_mission-fail').click(function(){
+        
+            msg = {MType:"control_mtype",UserStatus:{Me:{Name:Me},CurrentStatus:87,MissionResult:false}};
+            sendJson(msg);
+            $("#btn-mission").hide(); 
+        document.getElementById("submit-Popup_mission-succ").disabled=true;
+        document.getElementById("submit-Popup_mission-fail").disabled=true; 
+        
+    });
+    $('#btn-restart').click(function(){
+            clearRole();
+            msg = {MType:"control_mtype",UserStatus:{Me:{Name:Me},CurrentStatus:1041}};
+            sendJson(msg);
+            
+        
+        
+    });
+    
+function getBrowserInfo()
+{
+var agent = navigator.userAgent.toLowerCase() ;
+
+var regStr_ie = /msie [\d.]+;/gi ;
+var regStr_ff = /firefox\/[\d.]+/gi
+var regStr_chrome = /chrome\/[\d.]+/gi ;
+var regStr_saf = /safari\/[\d.]+/gi ;
+//IE
+if(agent.indexOf("msie") > 0)
+{
+return "ie" ;
+}
+
+//firefox
+if(agent.indexOf("firefox") > 0)
+{
+return "firefox" ;
+}
+
+//Chrome
+if(agent.indexOf("chrome") > 0)
+{
+return "chrome" ;
+}
+
+//Safari
+if(agent.indexOf("safari") > 0 && agent.indexOf("chrome") < 0)
+{
+return "safari" ;
+}
+
+}
+
+function gameCountDown(interval){
+    var i = interval;
+    var timer = setInterval(function(){
+                if(i== -1){
+                    clearInterval(timer);
+                }else{
+                    $("#countdown").html(i);
+                    --i;
+                }
+            },1000);
+}
+</script>
+  <div data-role="header">
+
+    <h1>Avalon</h1>
+  </div>
+
+<div data-role="main" class="ui-content" id="main">
+  
+<div data-role="fieldcontain" id ="showusers">	  
+<img id="icon-user" src="/static/img/User1.png" hidden>
+<img id="icon-merlin" src="/static/img/Role_Merlin.png" hidden>
+<img id="icon-Percival" src="/static/img/Role_Percival.png" hidden>
+<img id="icon-loyalist" src="/static/img/Role_loyalist.png" hidden>
+<img id="icon-Mordred" src="/static/img/Role_Mordred.png" hidden>
+<img id="icon-Morgana" src="/static/img/Role_Morgana.png" hidden>
+<img id="icon-Oberon" src="/static/img/Role_Oberon.png" hidden>
+<img id="icon-Assassin" src="/static/img/Role_Assassin.png" hidden>
+<img id="icon-Minion" src="/static/img/Role_Minion.png" hidden>
+<img id="icon-unknown" src="/static/img/unknown.png" hidden>
+
+<canvas id="user0" width="50" height="75" style="border:2px solid red;" hidden>您的浏览器不支持 HTML5 canvas 标签。</canvas>
+<canvas id="user1" width="50" height="75" style="border:2px solid red;"hidden>您的浏览器不支持 HTML5 canvas 标签。</canvas>
+<canvas id="user2" width="50" height="75" style="border:2px solid red;"hidden>您的浏览器不支持 HTML5 canvas 标签。</canvas>
+<canvas id="user3" width="50" height="75" style="border:2px solid red;"hidden>您的浏览器不支持 HTML5 canvas 标签。</canvas>
+<canvas id="user4" width="50" height="75" style="border:2px solid red;"hidden>您的浏览器不支持 HTML5 canvas 标签。</canvas>
+<br>
+<canvas id="user5" width="50" height="75" style="border:2px solid red;"hidden>您的浏览器不支持 HTML5 canvas 标签。</canvas>
+<canvas id="user6" width="50" height="75" style="border:2px solid red;"hidden>您的浏览器不支持 HTML5 canvas 标签。</canvas>
+<canvas id="user7" width="50" height="75" style="border:2px solid red;"hidden>您的浏览器不支持 HTML5 canvas 标签。</canvas>
+<canvas id="user8" width="50" height="75" style="border:2px solid red;"hidden>您的浏览器不支持 HTML5 canvas 标签。</canvas>
+<canvas id="user9" width="50" height="75" style="border:2px solid red;"hidden>您的浏览器不支持 HTML5 canvas 标签。</canvas>
+
+</div>
+
+<!-- Control and input page -->
+<div data-role="fieldcontain">
+  <hr>
+  <form id="msg_input">
+      
+      
+      <input type="text" data-inline="true" id="text_input">
+      
+    
+      <input id="chat-post"type="button" data-inline="true" value="Post" >
+      <input id="btn-restart"type="button" data-inline="true" value="Restart" >
+      <span>countdown: </span><span id="countdown"></span>
+      <div style="display:block">
+      <input  id="btn-ready"type="button" data-inline="true" value="Ready">
+        </div>
+        <div style="display:block">
+      <input  id="btn-unready"type="button" data-inline="true" value="UnReady">
+        </div>
+    <div style="display:block">
+      <input  id="btn-start"type="button" data-inline="true" value="Start">
+      </div>
+      <a id = "btn-assassinate" href="#popup_assassinate" data-rel="popup" class="ui-btn ui-btn-inline ui-corner-all">Assassinate</a>
+      <a id="btn-vote" href="#Popup_vote" data-rel="popup" class="ui-btn ui-btn-inline ui-corner-all">Vote</a>
+      <a id="btn-mission" href="#Popup_mission" data-rel="popup" class="ui-btn ui-btn-inline ui-corner-all" >Mission</a>
+      <a id = "btn-missionerselect" href="#popup_Select_missioner" data-rel="popup" class="ui-btn ui-btn-inline ui-corner-all" >Select Missioner</a>
+      
+
+
+<!-- poup_vote page -->
+    <div data-role="popup" id="Popup_vote" class="ui-content" data-overlay-theme="b">
+        <a href="#" data-rel="back" class="ui-btn ui-corner-all ui-shadow ui-btn ui-icon-delete ui-btn-icon-notext ui-btn-right">关闭</a>
+      <p>Please Vote for the Missioner.</p>
+      <form id="Vote">
+        <div class="ui-grid-a">
+          <div class="ui-block-a"><input type="submit" data-inline="true" value="Approve" id="submit-Popup_vote-approve"></div>
+          <div class="ui-block-b"><input type="submit" data-inline="true" value="Oppose" id="submit-Popup_vote-oppose"></div>
+        </div>
+      </form>
+    </div>
+
+
+<!-- Popup_mission page -->
+    <div data-role="popup" id="Popup_mission" class="ui-content" data-overlay-theme="b">
+        <a href="#" data-rel="back" class="ui-btn ui-corner-all ui-shadow ui-btn ui-icon-delete ui-btn-icon-notext ui-btn-right">关闭</a>
+      <p>Please finish your Mission.</p>
+      <form id="Mission">
+        <div class="ui-grid-a">
+          <div class="ui-block-a"><input type="submit" data-inline="true" value="Success" id="submit-Popup_mission-succ"></div>
+          <div class="ui-block-b"><input type="submit" data-inline="true" value="Fail" id="submit-Popup_mission-fail"></div>
+        </div>
+      </form>
+    </div>
+ <!-- Popup Select_missioner page -->   
+    <div data-role="popup" id="popup_Select_missioner" class="ui-content" data-overlay-theme="b">
+        <a href="#" data-rel="back" class="ui-btn ui-corner-all ui-shadow ui-btn ui-icon-delete ui-btn-icon-notext ui-btn-right">关闭</a>
+      <p>Please select missioners.</p>
+      <form id="Select_missioner">
+        <fieldset id="field-selectmissioner">
+        
+        </fieldset>
+        <input id='submit-missioner' type='submit' data-inline='true' value='提交'>
+        <input id='reset-missiner' type='reset' data-inline='true' value='重置'>
+      </form>
+    </div>
+
+    <!-- Popup assassinate page -->   
+    <div data-role="popup" id="popup_assassinate" class="ui-content" data-overlay-theme="b">
+        <a href="#" data-rel="back" class="ui-btn ui-corner-all ui-shadow ui-btn ui-icon-delete ui-btn-icon-notext ui-btn-right">关闭</a>
+      <p>Please select a target.</p>
+      <form id="assassinate-select">
+        <fieldset id="field-assassinate-select">
+        
+        </fieldset>
+        <input id='submit-assassinate' type='submit' data-inline='true' value='提交'>
+        <input id='reset-assassinate' type='reset' data-inline='true' value='重置'>
+      </form>
+    </div>
+
+    </form>
+  <hr>
+</div>
+
+
+<!--popup message-->
+<a id="btn-ppupmessage" href="#Popup-message" data-rel="popup" class="ui-btn ui-btn-inline ui-corner-all" style="display:none">显示弹窗msg</a>
+<div data-role="popup" id="Popup-message" class="ui-content">
+      <a href="#" data-rel="back" class="ui-btn ui-corner-all ui-shadow ui-btn ui-icon-delete ui-btn-icon-notext ui-btn-right">关闭</a>
+       
+      
+</div>
+
+<!-- chat display page -->
+
+<div data-role="fieldcontain">
+
+        <ul id="chat-messages">
+          <li>
+            <div class="message-container">
+              <strong>Welcome</strong>
+            </div>
+          </li>
+        </ul>
+
+    
+</div>
+
+<!--mission result popup-->
+<div data-role="popup" id="MissionResult_Popup">
+      <p>这是我的图片！</p> 
+      <a href="#pageone" data-rel="back" class="ui-btn ui-corner-all ui-shadow ui-btn-a ui-icon-delete ui-btn-icon-notext ui-btn-right">Close</a>
+</div>
+
+<!--voteresult popup-->
+<a href="#VoteSucc_Popup" data-rel="popup" class="ui-btn" data-transition="pop"></a>
+
+<!--msg-template-->
+<div id="msg-template" style="display:none">
+    <li>
+      <div class="message-container">
+        <div class="userpic"></div>
+        <div class="message">
+          <span class="user"></span>
+          <span class="seprate"></span>
+          <span class="content"></span>
+        </div>
+        <div class="msg-time"></div>
+      </div>
+    </li>
+  </div>
+
+</div>
+  <div data-role="footer">
+    <h1>底部文本</h1>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+
+</html>

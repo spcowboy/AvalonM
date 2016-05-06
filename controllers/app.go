@@ -92,6 +92,7 @@ func (this *AppController) Get() {
 	this.Data["Email"] = beego.AppConfig.String("email")
 	if IsFromMobile(this.Ctx.Input.UserAgent()) {
 		fmt.Println("Mobile agent request.")
+		//this.TplName = "Login.html"
 		this.TplName = "Login.html"
 	} else if strings.Contains(this.Ctx.Input.UserAgent(), "Windows NT") {
 		fmt.Println("Windows NT request.")
@@ -104,13 +105,16 @@ func (this *AppController) Get() {
 func (this *AppController) Join() {
 	// Get form value.
 	uname := this.GetString("uname")
-
+	beego.Info(uname)
 	// Check valid.
 	if len(uname) == 0 {
+		beego.Info("uname is nul.")
 		this.Redirect("/", 302)
 		return
 	}
-
+	
+	
+	
 	this.Redirect("/ws?uname="+uname, 302)
 
 	// Usually put return after redirect.

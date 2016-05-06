@@ -1,0 +1,13 @@
+user.png
+Role_Merlin.png
+Role_Percival.png
+Role_loyalist.png
+Role_Mordred.png
+Role_Morgana.png
+Role_Oberon.png
+Role_Assassin.png
+Role_Minion.png
+Mission_succ.png
+Mission_fail.png
+Vote_approve.png
+Vote_oppose.png

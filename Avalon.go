@@ -2,12 +2,13 @@ package main
 
 import (
 	"AvalonM/controllers"
+	"AvalonM/models"
 	"code.google.com/p/go.net/websocket"
 	"github.com/astaxie/beego"
 	"github.com/beego/i18n"
 )
 
-const APP_VER = "v0.1"
+const APP_VER = "v0.6"
 
 func main() {
 	beego.Info(beego.BConfig.AppName, APP_VER)
@@ -25,6 +26,8 @@ func main() {
 
 	// Register template functions.
 	beego.AddFuncMap("i18n", i18n.Tr)
+	go models.Init()
+	
 	//go controllers.InitChatRoom()
 	beego.Run()
 }
